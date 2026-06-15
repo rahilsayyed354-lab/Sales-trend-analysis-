@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  PROJECT  : Sales Trend Visualization Dashboard
+  AUTHOR   : Rahil Sayyed
+  INTERN ID: CITS1293
+  COMPANY  : CodeTech IT Solutions Pvt. Ltd.
+  DOMAIN   : Data Analytics
+  PERIOD   : 20 May 2026 – 17 June 2026
+  DESC     : Interactive sales analytics dashboard showing
+             revenue trends, product performance, regional
+             breakdown, and growth metrics using Chart.js
+  ============================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sales Trend Visualization — Rahil Sayyed | CITS1293</title>
+
+  <!-- Chart.js for all data visualizations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <!-- Google Fonts: DM Sans (body) + DM Mono (numbers/data) -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<style>
+/* ── DESIGN TOKENS ──────────────────────────────────────── */
+:root {
+  /* Palette: deep slate bg, emerald accent, amber highlight */
+  --bg:        #080c14;
+  --surface:   #0e1420;
+  --surface2:  #141b2d;
+  --surface3:  #1c2540;
+  --border:    #1e2d4a;
+  --green:     #00d4a8;   /* primary accent — teal-green */
+  --green-dim: rgba(0,212,168,0.12);
+  --amber:     #f5a623;   /* secondary — amber */
+  --amber-dim: rgba(245,166,35,0.12);
+  --red:       #ff5c7a;
+  --red-dim:   rgba(255,92,122,0.12);
+  --blue:      #4e9eff;
+  --blue-dim:  rgba(78,158,255,0.12);
+  --text:      #e2e8f8;
+  --muted:     #5a6a8a;
+  --muted2:    #8896b0;
+  --radius:    14px;
+  --radius-sm: 8px;
+}
+
+/* ── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── BASE ───────────────────────────────────────────────── */
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 200;
+}
+
+/* Brand mark */
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-dot {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--green), #00897b);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+.brand-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 15px; font-weight: 500; letter-spacing: -0.3px;
+}
+.brand-name em { color: var(--green); font-style: normal; }
+
+/* Nav pills */
+.nav-pills { display: flex; gap: 4px; }
+.nav-pill {
+  padding: 5px 14px; border-radius: 20px; font-size: 13px;
+  border: none; cursor: pointer; font-family: inherit;
+  background: transparent; color: var(--muted2); transition: all 0.2s;
+}
+.nav-pill:hover { color: var(--text); background: var(--surface2); }
+.nav-pill.active { background: var(--green-dim); color: var(--green); }
+
+/* Meta info */
+.header-right { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.8; }
+.header-right strong { color: var(--text); }
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+.page { max-width: 1440px; margin: 0 auto; padding: 28px 32px 60px; }
+
+/* Section label */
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 14px;
+}
+
+/* ── TICKER BAR ─────────────────────────────────────────────
+   Animated scrolling ticker showing live KPIs
+─────────────────────────────────────────────────────────── */
+.ticker-wrap {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 0;
+  overflow: hidden; margin-bottom: 28px;
+}
+.ticker {
+  display: flex; gap: 0; width: max-content;
+  animation: ticker 28s linear infinite;
+}
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 32px; border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.ticker-label { font-size: 11px; color: var(--muted); }
+.ticker-val   { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
+.up   { color: var(--green); }
+.down { color: var(--red); }
+.neutral { color: var(--amber); }
+
+/* ── KPI CARDS ───────────────────────────────────────────── */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px;
+}
+@media(max-width:900px){ .kpi-grid { grid-template-columns: repeat(2,1fr); } }
+
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px 20px;
+  position: relative; overflow: hidden; cursor: default;
+  transition: border-color 0.2s;
+}
+.kpi-card:hover { border-color: var(--green); }
+
+/* Glowing corner accent */
+.kpi-card::after {
+  content:''; position: absolute; top: -30px; right: -30px;
+  width: 80px; height: 80px; border-radius: 50%;
+  opacity: 0.07;
+}
+.kpi-green::after  { background: var(--green); }
+.kpi-amber::after  { background: var(--amber); }
+.kpi-blue::after   { background: var(--blue); }
+.kpi-red::after    { background: var(--red); }
+
+.kpi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.kpi-icon { font-size: 20px; }
+.kpi-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
+  font-family: 'DM Mono', monospace;
+}
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red   { background: var(--red-dim);   color: var(--red); }
+.badge-amber { background: var(--amber-dim); color: var(--amber); }
+
+.kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.kpi-value {
+  font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 500;
+  letter-spacing: -1px; line-height: 1;
+}
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* Sparkline mini chart inside KPI card */
+.sparkline { margin-top: 14px; height: 36px; }
+
+/* ── MAIN CHART GRID ─────────────────────────────────────── */
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid-3   { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid-2   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+@media(max-width:1100px){ .grid-2-1,.grid-3,.grid-2 { grid-template-columns: 1fr; } }
+
+/* Chart panel */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+}
+.panel-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.panel-title { font-size: 14px; font-weight: 600; }
+.panel-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 18px; }
+
+/* Legend dots */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted2); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Tag chips on panel */
+.tag {
+  font-size: 10px; padding: 3px 8px; border-radius: 8px;
+  border: 1px solid var(--border); color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── SALES TABLE ─────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 10px 16px; text-align: left;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--muted); font-weight: 600;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+tbody td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface2); }
+.mono { font-family: 'DM Mono', monospace; }
+
+/* Progress bar inside table */
+.prog-wrap { width: 80px; background: var(--surface3); border-radius: 4px; height: 5px; display:inline-block; vertical-align: middle; margin-right: 6px; }
+.prog-fill { height: 100%; border-radius: 4px; background: var(--green); }
+
+/* Status badges */
+.status {
+  display: inline-block; padding: 3px 9px; border-radius: 10px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+}
+.s-hit    { background: var(--green-dim); color: var(--green); }
+.s-near   { background: var(--amber-dim); color: var(--amber); }
+.s-miss   { background: var(--red-dim);   color: var(--red); }
+
+/* ── REGIONAL BARS ───────────────────────────────────────── */
+.region-list { display: flex; flex-direction: column; gap: 14px; }
+.region-item {}
+.region-top { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+.region-name { color: var(--text); }
+.region-val  { font-family: 'DM Mono', monospace; color: var(--muted2); }
+.region-bar  { height: 6px; background: var(--surface3); border-radius: 4px; overflow: hidden; }
+.region-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+/* ── FOOTER ─────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border); margin-top: 8px;
+  padding: 18px 32px; text-align: center;
+  font-size: 11px; color: var(--muted);
+}
+footer strong { color: var(--muted2); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════ -->
+<header>
+  <!-- Brand logo -->
+  <div class="brand">
+    <div class="brand-dot">📈</div>
+    <div class="brand-name">Sales<em>Lens</em></div>
+  </div>
+
+  <!-- Navigation pills -->
+  <nav class="nav-pills">
+    <button class="nav-pill active">Overview</button>
+    <button class="nav-pill">Products</button>
+    <button class="nav-pill">Regions</button>
+    <button class="nav-pill">Forecast</button>
+  </nav>
+
+  <!-- Intern meta -->
+  <div class="header-right">
+    <div><strong>Rahil Sayyed</strong> · CITS1293</div>
+    <div>CodeTech IT Solutions · Data Analytics 2026</div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE BODY
+════════════════════════════════════════════════════════════ -->
+<div class="page">
+
+  <!-- ── LIVE TICKER BAR ───────────────────────────────────
+       Scrolling strip of real-time KPI values
+  ─────────────────────────────────────────────────────────── -->
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker">
+      <!-- Items duplicated in JS for infinite scroll -->
+    </div>
+  </div>
+
+  <!-- ── KPI CARDS ─────────────────────────────────────────
+       4 headline metrics with sparklines
+  ─────────────────────────────────────────────────────────── -->
+  <div class="eyebrow">Key Performance Indicators</div>
+  <div class="kpi-grid">
+
+    <!-- Total Revenue -->
+    <div class="kpi-card kpi-green">
+      <div class="kpi-top">
+        <span class="kpi-icon">💰</span>
+        <span class="kpi-badge badge-green">↑ 18.4%</span>
+      </div>
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value">₹84.2L</div>
+      <div class="kpi-sub">vs ₹71.1L last year</div>
+      <div class="sparkline"><canvas id="spark1"></canvas></div>
+    </div>
+
+    <!-- Units Sold -->
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-top">
+        <span class="kpi-icon">📦</span>
+        <span class="kpi-badge badge-green">↑ 12.1%</span>
+      </div>
+      <div class="kpi-label">Units Sold</div>
+      <div class="kpi-value">14,836</div>
+      <div class="kpi-sub">vs 13,232 last year</div>
+      <div class="sparkline"><canvas id="spark2"></canvas></div>
+    </div>
+
+    <!-- Avg Order Value -->
+    <div class="kpi-card kpi-amber">
+      <div class="kpi-top">
+        <span class="kpi-icon">🛒</span>
+        <span class="kpi-badge badge-amber">↑ 5.6%</span>
+      </div>
+      <div class="kpi-label">Avg Order Value</div>
+      <div class="kpi-value">₹5,676</div>
+      <div class="kpi-sub">vs ₹5,375 last year</div>
+      <div class="sparkline"><canvas id="spark3"></canvas></div>
+    </div>
+
+    <!-- Return Rate -->
+    <div class="kpi-card kpi-red">
+      <div class="kpi-top">
+        <span class="kpi-icon">↩️</span>
+        <span class="kpi-badge badge-red">↑ 0.8%</span>
+      </div>
+      <div class="kpi-label">Return Rate</div>
+      <div class="kpi-value">3.2%</div>
+      <div class="kpi-sub">vs 2.4% last year</div>
+      <div class="sparkline"><canvas id="spark4"></canvas></div>
+    </div>
+
+  </div><!-- /kpi-grid -->
+
+  <!-- ── ROW 1: Revenue Trend + Category Donut ─────────────
+       Wide line chart showing monthly revenue vs last year,
+       and a donut showing revenue split by product category.
+  ─────────────────────────────────────────────────────────── -->
+  <div class="eyebrow">Revenue Trends</div>
+  <div class="grid-2-1">
+
+    <!-- Monthly Revenue Trend (Line) -->
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Monthly Revenue — 2026 vs 2025</div>
+          <div class="panel-subtitle">Comparing this year's revenue to the same period last year</div>
+        </div>
+        <span class="tag">12 months</span>
+      </div>
+      <div class="legend" style="margin-bottom:18px">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>2026</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div>2025</div>
+      </div>
+      <canvas id="revenueLineChart" height="85"></canvas>
+    </div>
+
+    <!-- Revenue by Category (Donut) -->
+    <div class="panel">
+      <div class="panel-title">Revenue by Category</div>
+      <div class="panel-subtitle">Share of total 2026 revenue</div>
+      <canvas id="categoryDonut" height="180"></canvas>
+    </div>
+
+  </div><!-- /grid-2-1 -->
+
+  <!-- ── ROW 2: 3 smaller charts ───────────────────────────
+       Bar chart (quarterly), Area chart (weekly), Polar (channel)
+  ─────────────────────────────────────────────────────────── -->
+  <div class="grid-3">
+
+    <!-- Quarterly Sales Bar -->
+    <div class="panel">
+      <div class="panel-title">Quarterly Sales</div>
+      <div class="panel-subtitle">Revenue per quarter, 2024–2026</div>
+      <canvas id="quarterBar" height="150"></canvas>
+    </div>
+
+    <!-- Weekly Sales Area -->
+    <div class="panel">
+      <div class="panel-title">Weekly Sales Velocity</div>
+      <div class="panel-subtitle">Units sold per week, last 12 weeks</div>
+      <canvas id="weeklyArea" height="150"></canvas>
+    </div>
+
+    <!-- Sales Channel Polar -->
+    <div class="panel">
+      <div class="panel-title">Sales by Channel</div>
+      <div class="panel-subtitle">Revenue contribution per channel</div>
+      <canvas id="channelPolar" height="150"></canvas>
+    </div>
+
+  </div><!-- /grid-3 -->
+
+  <!-- ── ROW 3: Product Table + Regional Bars ──────────────
+       Left: product performance table with target vs actual
+       Right: regional sales bar breakdown
+  ─────────────────────────────────────────────────────────── -->
+  <div class="grid-2">
+
+    <!-- Product Performance Table -->
+    <div class="panel">
+      <div class="panel-title">Product Performance</div>
+      <div class="panel-subtitle">Revenue, units sold, and target achievement per product</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Revenue</th>
+              <th>Units</th>
+              <th>vs Target</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="productTable"></tbody><!-- filled by JS -->
+        </table>
+      </div>
+    </div>
+
+    <!-- Regional Sales Breakdown -->
+    <div class="panel">
+      <div class="panel-title">Regional Sales Breakdown</div>
+      <div class="panel-subtitle">Revenue contribution by region (% of total)</div>
+      <div class="region-list" id="regionList" style="margin-top:10px"></div><!-- filled by JS -->
+
+      <!-- Region donut chart -->
+      <canvas id="regionChart" height="170" style="margin-top:24px"></canvas>
+    </div>
+
+  </div><!-- /grid-2 -->
+
+</div><!-- /page -->
+
+<!-- FOOTER -->
+<footer>
+  <strong>Sales Trend Visualization</strong> · Rahil Sayyed (CITS1293) · CodeTech IT Solutions Pvt. Ltd. · Data Analytics Internship 2026
+</footer>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT — Data & Charts
+════════════════════════════════════════════════════════════ -->
+<script>
+
+// ── GLOBAL CHART DEFAULTS ──────────────────────────────────
+Chart.defaults.color       = '#5a6a8a';
+Chart.defaults.font.family = 'DM Sans';
+Chart.defaults.borderColor = '#1e2d4a';
+
+// ── COLOR PALETTE ──────────────────────────────────────────
+const C = {
+  green:  '#00d4a8',
+  amber:  '#f5a623',
+  red:    '#ff5c7a',
+  blue:   '#4e9eff',
+  purple: '#a78bfa',
+  pink:   '#f472b6',
+  muted:  '#2a3a5a',
+};
+
+// ── MONTH LABELS ───────────────────────────────────────────
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── REVENUE DATA (in Lakhs ₹) ─────────────────────────────
+// Monthly revenue for 2026 and 2025 (for year-over-year comparison)
+const rev2026 = [5.8, 6.2, 7.4, 6.9, 8.1, 7.6, 8.9, 7.2, 8.4, 9.1, 8.8, 9.8];
+const rev2025 = [4.9, 5.3, 6.1, 6.0, 6.8, 6.5, 7.3, 6.4, 7.1, 7.8, 7.5, 8.4];
+
+// ── TICKER BAR ─────────────────────────────────────────────
+// Scrolling live metrics strip
+const tickerItems = [
+  { label: 'Total Revenue',   val: '₹84.2L', cls: 'up'      },
+  { label: 'Units Sold',      val: '14,836', cls: 'up'      },
+  { label: 'Avg Order Value', val: '₹5,676', cls: 'up'      },
+  { label: 'Return Rate',     val: '3.2%',   cls: 'down'    },
+  { label: 'Top Product',     val: 'Laptop Pro X', cls: 'neutral' },
+  { label: 'Top Region',      val: 'West India',   cls: 'up' },
+  { label: 'Best Month',      val: 'December',     cls: 'up' },
+  { label: 'YoY Growth',      val: '+18.4%',       cls: 'up' },
+];
+
+// Duplicate items for seamless infinite loop
+const ticker = document.getElementById('ticker');
+[...tickerItems, ...tickerItems].forEach(item => {
+  ticker.innerHTML += `
+    <div class="ticker-item">
+      <span class="ticker-label">${item.label}</span>
+      <span class="ticker-val ${item.cls}">${item.val}</span>
+    </div>`;
+});
+
+// ── SPARKLINE HELPER ───────────────────────────────────────
+// Creates a tiny line chart inside a KPI card
+function makeSparkline(id, data, color) {
+  new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels: data.map((_,i)=>i),
+      datasets: [{ data, borderColor: color, borderWidth: 2,
+        pointRadius: 0, tension: 0.4, fill: true,
+        backgroundColor: color.replace(')', ',0.1)').replace('rgb','rgba') }]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } }
+    }
+  });
+}
+
+// Sparkline data for each KPI card
+makeSparkline('spark1', [5.8,6.2,7.4,6.9,8.1,7.6,8.9,7.2,8.4,9.1,8.8,9.8], C.green);
+makeSparkline('spark2', [980,1120,1380,1250,1540,1430,1680,1320,1580,1740,1690,1900], C.blue);
+makeSparkline('spark3', [5200,5350,5480,5300,5620,5530,5710,5480,5650,5800,5760,5900], C.amber);
+makeSparkline('spark4', [2.1,2.4,2.8,2.5,3.0,2.9,3.4,2.8,3.1,3.4,3.2,3.5], C.red);
+
+// ── CHART 1: REVENUE LINE CHART (2026 vs 2025) ────────────
+new Chart(document.getElementById('revenueLineChart'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: '2026',
+        data: rev2026,
+        borderColor: C.green,
+        backgroundColor: 'rgba(0,212,168,0.08)',
+        pointBackgroundColor: C.green,
+        pointRadius: 4, tension: 0.4, fill: true, borderWidth: 2,
+      },
+      {
+        label: '2025',
+        data: rev2025,
+        borderColor: C.muted,
+        backgroundColor: 'transparent',
+        pointRadius: 3, tension: 0.4, fill: false,
+        borderWidth: 1.5, borderDash: [4,4],
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2d4a' } },
+      y: {
+        grid: { color: '#1e2d4a' },
+        ticks: { callback: v => '₹' + v + 'L' }
+      }
+    }
+  }
+});
+
+// ── CHART 2: CATEGORY DONUT ────────────────────────────────
+// Revenue split across product categories
+new Chart(document.getElementById('categoryDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Electronics','Clothing','Home & Kitchen','Sports','Books','Other'],
+    datasets: [{
+      data: [38, 22, 16, 12, 7, 5],
+      backgroundColor: [C.green, C.blue, C.amber, C.purple, C.pink, C.red],
+      borderWidth: 2, borderColor: '#0e1420',
+    }]
+  },
+  options: {
+    responsive: true, cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 12, boxWidth: 10, font: { size: 11 } } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } }
+    }
+  }
+});
+
+// ── CHART 3: QUARTERLY BAR ─────────────────────────────────
+// Grouped bars: 3 years × 4 quarters
+new Chart(document.getElementById('quarterBar'), {
+  type: 'bar',
+  data: {
+    labels: ['Q1','Q2','Q3','Q4'],
+    datasets: [
+      { label: '2024', data: [18.2, 20.1, 22.4, 24.8], backgroundColor: C.muted,  borderRadius: 4 },
+      { label: '2025', data: [21.3, 23.6, 26.1, 29.7], backgroundColor: C.blue,   borderRadius: 4 },
+      { label: '2026', data: [25.4, 27.8, 31.6, 36.1], backgroundColor: C.green,  borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, padding: 10 } } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#1e2d4a' }, ticks: { callback: v => '₹' + v + 'L' } }
+    }
+  }
+});
+
+// ── CHART 4: WEEKLY AREA ───────────────────────────────────
+// Units sold per week over the last 12 weeks
+const weekLabels = Array.from({length:12}, (_,i) => `W${i+1}`);
+const weekUnits  = [280,310,295,340,375,360,410,390,425,460,445,490];
+
+new Chart(document.getElementById('weeklyArea'), {
+  type: 'line',
+  data: {
+    labels: weekLabels,
+    datasets: [{
+      label: 'Units',
+      data: weekUnits,
+      borderColor: C.amber,
+      backgroundColor: 'rgba(245,166,35,0.12)',
+      pointBackgroundColor: C.amber,
+      pointRadius: 3, tension: 0.4, fill: true, borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2d4a' } },
+      y: { grid: { color: '#1e2d4a' } }
+    }
+  }
+});
+
+// ── CHART 5: CHANNEL POLAR AREA ───────────────────────────
+// Revenue contribution by sales channel
+new Chart(document.getElementById('channelPolar'), {
+  type: 'polarArea',
+  data: {
+    labels: ['Online Store','Retail','Wholesale','App','Marketplace'],
+    datasets: [{
+      data: [42, 23, 18, 11, 6],
+      backgroundColor: [
+        'rgba(0,212,168,0.7)', 'rgba(78,158,255,0.7)',
+        'rgba(245,166,35,0.7)', 'rgba(167,139,250,0.7)',
+        'rgba(255,92,122,0.7)'
+      ],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } } },
+    scales: { r: { grid: { color: '#1e2d4a' }, ticks: { display: false } } }
+  }
+});
+
+// ── PRODUCT TABLE DATA ─────────────────────────────────────
+const products = [
+  { name: 'Laptop Pro X',    rev: '₹18.4L', units: 2840, pct: 94, status: 'Hit'  },
+  { name: 'SmartPhone Z12',  rev: '₹14.2L', units: 3120, pct: 87, status: 'Near' },
+  { name: 'Wireless Buds',   rev: '₹9.8L',  units: 4380, pct: 102,status: 'Hit'  },
+  { name: 'Smart Watch S3',  rev: '₹8.6L',  units: 1960, pct: 76, status: 'Miss' },
+  { name: 'Tablet Air 5',    rev: '₹7.1L',  units: 1240, pct: 91, status: 'Near' },
+  { name: 'USB-C Hub Pro',   rev: '₹5.4L',  units: 5210, pct: 108,status: 'Hit'  },
+  { name: 'Portable SSD 1T', rev: '₹4.9L',  units: 2140, pct: 68, status: 'Miss' },
+  { name: 'Gaming Mouse X',  rev: '₹4.2L',  units: 3680, pct: 83, status: 'Near' },
+];
+
+// Render product table rows dynamically
+const tbody = document.getElementById('productTable');
+products.forEach(p => {
+  // Determine badge class based on status
+  const cls = p.status === 'Hit' ? 's-hit' : p.status === 'Near' ? 's-near' : 's-miss';
+  // Progress bar width capped at 100%
+  const barW = Math.min(p.pct, 100);
+  tbody.innerHTML += `
+    <tr>
+      <td>${p.name}</td>
+      <td class="mono">${p.rev}</td>
+      <td class="mono">${p.units.toLocaleString()}</td>
+      <td>
+        <div class="prog-wrap"><div class="prog-fill" style="width:${barW}%"></div></div>
+        <span class="mono" style="font-size:11px">${p.pct}%</span>
+      </td>
+      <td><span class="status ${cls}">${p.status}</span></td>
+    </tr>`;
+});
+
+// ── REGIONAL BREAKDOWN ─────────────────────────────────────
+const regions = [
+  { name: 'West India',  pct: 31, color: C.green  },
+  { name: 'South India', pct: 26, color: C.blue   },
+  { name: 'North India', pct: 22, color: C.amber  },
+  { name: 'East India',  pct: 14, color: C.purple },
+  { name: 'Central',     pct: 7,  color: C.red    },
+];
+
+// Render region progress bars
+const regionList = document.getElementById('regionList');
+regions.forEach(r => {
+  regionList.innerHTML += `
+    <div class="region-item">
+      <div class="region-top">
+        <span class="region-name">${r.name}</span>
+        <span class="region-val">${r.pct}%</span>
+      </div>
+      <div class="region-bar">
+        <div class="region-fill" style="width:${r.pct}%; background:${r.color}"></div>
+      </div>
+    </div>`;
+});
+
+// ── CHART 6: REGION DONUT ─────────────────────────────────
+new Chart(document.getElementById('regionChart'), {
+  type: 'doughnut',
+  data: {
+    labels: regions.map(r => r.name),
+    datasets: [{
+      data: regions.map(r => r.pct),
+      backgroundColor: regions.map(r => r.color),
+      borderWidth: 2, borderColor: '#0e1420',
+    }]
+  },
+  options: {
+    responsive: true, cutout: '60%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 10, boxWidth: 10, font: { size: 11 } } }
+    }
+  }
+});
+
+</script>
+</body>
+</html>
