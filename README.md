@@ -1,3 +1,11 @@
+Internship Details
+
+Intern ID: CITS1293
+Company: CodeTech IT Solutions Pvt. Ltd.
+Domain: Data Analytics
+Duration: 20 May 2026 – 17 June 2026
+Name rahil sayyed
+
 Sales Trend Visualization Dashboard
 
 Project Overview
